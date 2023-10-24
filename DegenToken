@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts@4.9.0/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts@4.9.0/access/Ownable.sol";
+
+contract DegenToken is ERC20, Ownable {
+
+    struct Item {
+        string name;
+        uint256 price;
+    }
+
+    mapping(uint256 => Item) public items;
+    uint256 public itemCount;
+
+    mapping(address => uint256[]) public playerItems;
+
+    event ItemAdded(uint256 itemId, string name, uint256 price);
+    event ItemRedeemed(address indexed player, uint256 itemId);
+
+    constructor() ERC20("Degen", "DGN") {}
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    function addItem(string memory name, uint256 price) public onlyOwner {
+        items[itemCount] = Item(name, price);
+        itemCount++;
+        emit ItemAdded(itemCount - 1, name, price);
+    }
+
+function redeemItem(uint256 itemId) public payable {
+    require(itemId < itemCount, "Item does not exist");
+
+    uint256 price = items[itemId].price;
+    require(balanceOf(msg.sender) >= price, "Insufficient balance");
+
+    _transfer(msg.sender, owner(), price); // Transfer tokens to owner
+
+    
+    uint256[] storage playerItemList = playerItems[msg.sender];
+    playerItemList.push(itemId);
+
+    // Burn the tokens used for redemption
+    _burn(msg.sender, price);
+
+    emit ItemRedeemed(msg.sender, itemId);
+}
+
+    function getPlayerItems() public view returns (uint256[] memory) {
+        return playerItems[msg.sender];
+    }
+
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+    }
+}
